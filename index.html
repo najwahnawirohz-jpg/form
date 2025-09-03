@@ -1,0 +1,162 @@
+<!DOCTYPE html>
+<html lang="id">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+  <title>Formulir Pendaftaran</title>
+  <style>
+    body { font-family: Arial, sans-serif; background: #f9f9f9; margin:0; padding:0; display:flex; justify-content:center; align-items:flex-start; min-height:100vh; }
+    .container { margin-top:30px; background:#fff; padding:20px 30px; border-radius:10px; box-shadow:0 4px 8px rgba(0,0,0,0.1); width:90%; max-width:500px; }
+    h1 { text-align:center; font-size:24px; margin-bottom:20px; }
+    label { display:block; margin:10px 0 5px; font-weight:bold; }
+    input, textarea { width:100%; padding:8px; border:1px solid #ccc; border-radius:5px; font-size:14px; }
+    .error { color:red; font-size:12px; margin-top:2px; min-height:16px; }
+    button { margin-top:15px; padding:10px; width:100%; border:none; background:#007bff; color:white; font-size:16px; border-radius:5px; cursor:pointer; }
+    button:hover { background:#0056b3; }
+    #hasil { display:none; margin-top:20px; padding:15px; border-radius:8px; background:#eaf6ff; border:1px solid #b6daff; animation:fadeIn .3s ease-in-out; }
+    @keyframes fadeIn { from{opacity:0; transform:translateY(-8px);} to{opacity:1; transform:translateY(0);} }
+  </style>
+</head>
+<body>
+  <div class="container">
+    <h1>FORMULIR PENDAFTARAN</h1>
+
+    <form id="formPendaftaran" novalidate>
+      <label for="nama">Nama Kamu:</label>
+      <input type="text" id="nama" name="nama" required>
+      <div id="error-nama" class="error" role="alert" aria-live="polite"></div>
+
+      <label for="email">Email:</label>
+      <input type="email" id="email" name="email" required>
+      <div id="error-email" class="error" role="alert" aria-live="polite"></div>
+
+      <label for="hp">Nomor HP:</label>
+      <input type="tel" id="hp" name="hp" required placeholder="+62">
+      <div id="error-hp" class="error" role="alert" aria-live="polite"></div>
+
+      <label for="tgl">Tanggal Lahir:</label>
+      <input type="date" id="tgl" name="tgl" required>
+      <div id="error-tgl" class="error" role="alert" aria-live="polite"></div>
+
+      <label for="alamat">Alamat:</label>
+      <textarea id="alamat" name="alamat" rows="3" required></textarea>
+      <div id="error-alamat" class="error" role="alert" aria-live="polite"></div>
+
+      <button type="submit">Kirim</button>
+    </form>
+
+    <!-- Hasil Output -->
+    <div id="hasil" aria-live="polite"></div>
+  </div>
+
+  <script>
+    const form = document.getElementById("formPendaftaran");
+    const hasil = document.getElementById("hasil");
+    const tglInput = document.getElementById("tgl");
+
+    // buat string tanggal hari ini berdasarkan waktu lokal (YYYY-MM-DD)
+    function getTodayLocalString() {
+      const d = new Date();
+      const yyyy = d.getFullYear();
+      const mm = String(d.getMonth() + 1).padStart(2, '0');
+      const dd = String(d.getDate()).padStart(2, '0');
+      return `${yyyy}-${mm}-${dd}`;
+    }
+    const todayStr = getTodayLocalString();
+    // set max di date input supaya user gak bisa pilih tanggal masa depan lewat datepicker
+    tglInput.max = todayStr;
+
+    function escapeHtml(str) {
+      return String(str)
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+    }
+
+    form.addEventListener("submit", function(event) {
+      event.preventDefault();
+
+      // Ambil nilai input
+      const nama = document.getElementById("nama").value.trim();
+      const email = document.getElementById("email").value.trim();
+      const hpRaw = document.getElementById("hp").value.trim();
+      const tgl = document.getElementById("tgl").value;
+      const alamat = document.getElementById("alamat").value.trim();
+
+      // Reset error message
+      document.querySelectorAll(".error").forEach(el => el.textContent = "");
+
+      let valid = true;
+
+      // Validasi Nama
+      if (nama.length < 3) {
+        document.getElementById("error-nama").textContent = "Nama minimal 3 huruf.";
+        valid = false;
+      }
+
+      // Validasi Email (lebih fleksibel)
+      const emailPattern = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
+      if (!emailPattern.test(email)) {
+        document.getElementById("error-email").textContent = "Format email tidak valid.";
+        valid = false;
+      }
+
+      // Normalisasi dan validasi Nomor HP
+      // terima: 08..., +62..., 62...
+      let normalized = hpRaw.replace(/[\s\-().]/g, ''); // hilangkan spasi/strip/kurung
+      let digitsOnly = normalized.replace(/\D/g, '');
+      if (normalized.startsWith('+62')) {
+        // +62xxxxxxxx -> 0xxxxxxxx
+        digitsOnly = '0' + digitsOnly.slice(2);
+      } else if (normalized.startsWith('62') && !normalized.startsWith('0')) {
+        digitsOnly = '0' + digitsOnly.slice(2);
+      } else {
+        // biarkan seperti 0812...
+      }
+      // cek: harus mulai dengan 08 dan minimal 10 digit
+      if (!/^08\d{8,}$/.test(digitsOnly)) {
+        document.getElementById("error-hp").textContent = "Nomor HP harus dimulai dengan 08 dan minimal 10 digit. (boleh +62 atau 62 juga).";
+        valid = false;
+      }
+
+      // Validasi Tanggal Lahir (tidak kosong, tidak masa depan)
+      if (tgl === "" || tgl > todayStr) {
+        document.getElementById("error-tgl").textContent = "Tanggal lahir tidak boleh kosong atau di masa depan.";
+        valid = false;
+      } else {
+        const dob = new Date(tgl);
+        const today = new Date();
+        let age = today.getFullYear() - dob.getFullYear();
+        const m = today.getMonth() - dob.getMonth();
+        if (m < 0 || (m === 0 && today.getDate() < dob.getDate())) age--;
+        if (age < 17) {
+          document.getElementById("error-tgl").textContent = "Usia";
+          valid = false;
+        }
+      }
+
+      // Validasi Alamat
+      if (alamat.length < 5) {
+        document.getElementById("error-alamat").textContent = "Alamat minimal 5 karakter.";
+        valid = false;
+      }
+
+      // Jika valid, tampilkan hasil (dengan escape untuk mencegah XSS)
+      if (valid) {
+        hasil.style.display = "block";
+        hasil.innerHTML = `
+          <h3 style="color:green;">pendaftaran Berhasil!</h3>
+          <p><b>Nama:</b> ${escapeHtml(nama)}</p>
+          <p><b>Email:</b> ${escapeHtml(email)}</p>
+          <p><b>Nomor HP:</b> ${escapeHtml(digitsOnly)}</p>
+          <p><b>Tanggal Lahir:</b> ${escapeHtml(tgl)}</p>
+          <p><b>Alamat:</b> ${escapeHtml(alamat)}</p>
+        `;
+        form.reset();
+      }
+    });
+  </script>
+</body>
+</html>
